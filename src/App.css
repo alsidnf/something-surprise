@@ -294,6 +294,7 @@ h2 {
 }
 
 .reef .caption {
+  pointer-events: none;
   width: min(680px, calc(100% - 112px));
   text-shadow: 0 3px 18px rgba(2, 19, 24, 0.55);
 }

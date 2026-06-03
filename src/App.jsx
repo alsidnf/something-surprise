@@ -210,20 +210,58 @@ function UnderwaterGarden({ active }) {
       canvas.height = Math.floor(canvas.clientHeight * window.devicePixelRatio)
     }
 
-    const drawFish = (x, y, scale, color, direction, wobble) => {
+    const getRipplePush = (x, y, strength = 1) =>
+      ripplesRef.current.reduce(
+        (push, ripple) => {
+          const dx = x - ripple.x
+          const dy = y - ripple.y
+          const distance = Math.max(1, Math.hypot(dx, dy))
+          const waveHit = Math.max(0, 1 - Math.abs(distance - ripple.radius) / (150 * window.devicePixelRatio))
+          const nearHit = Math.max(0, 1 - distance / (220 * window.devicePixelRatio))
+          const force = (waveHit * 1.6 + nearHit * 0.9) * ripple.life * strength
+
+          return {
+            x: push.x + (dx / distance) * force * 58 * window.devicePixelRatio,
+            y: push.y + (dy / distance) * force * 44 * window.devicePixelRatio,
+            panic: push.panic + force,
+          }
+        },
+        { x: 0, y: 0, panic: 0 },
+      )
+
+    const curveSwimmer = ({ lane, speed, seed, direction, amplitude, drift = 0, scale = 1 }) => {
+      const progress = (time * speed + seed) % 1
+      const x = direction > 0 ? progress * (canvas.width + 160) - 80 : canvas.width + 80 - progress * (canvas.width + 160)
+      const curve =
+        Math.sin(progress * Math.PI * 2 + seed * 8) * amplitude +
+        Math.sin(time * 1.7 + seed * 17) * amplitude * 0.38 +
+        Math.cos(progress * Math.PI * 4 + seed) * amplitude * 0.18
+      const y = canvas.height * lane + curve + drift * canvas.height
+      const push = getRipplePush(x, y, scale)
+
+      return {
+        x: x + push.x,
+        y: y + push.y,
+        direction,
+        angle: Math.max(-0.42, Math.min(0.42, curve / (amplitude * 4 + 1) + push.y / 260)),
+        panic: Math.min(1.2, push.panic),
+      }
+    }
+
+    const drawFish = (x, y, scale, color, direction, wobble, angle = 0, panic = 0) => {
       context.save()
       context.translate(x, y)
       context.scale(direction * scale, scale)
-      context.rotate(Math.sin(wobble) * 0.08)
+      context.rotate(angle + Math.sin(wobble) * (0.08 + panic * 0.08))
       context.fillStyle = color
       context.beginPath()
       context.ellipse(0, 0, 34, 16, 0, 0, Math.PI * 2)
       context.fill()
       context.beginPath()
       context.moveTo(-28, 0)
-      context.lineTo(-52, -17)
+      context.lineTo(-52, -17 - panic * 8)
       context.lineTo(-48, 0)
-      context.lineTo(-52, 17)
+      context.lineTo(-52, 17 + panic * 8)
       context.closePath()
       context.fill()
       context.fillStyle = '#07131c'
@@ -233,11 +271,11 @@ function UnderwaterGarden({ active }) {
       context.restore()
     }
 
-    const drawTurtle = (x, y, scale, direction, wobble) => {
+    const drawTurtle = (x, y, scale, direction, wobble, angle = 0, panic = 0) => {
       context.save()
       context.translate(x, y)
       context.scale(direction * scale, scale)
-      context.rotate(Math.sin(wobble) * 0.05)
+      context.rotate(angle + Math.sin(wobble) * (0.05 + panic * 0.05))
       context.fillStyle = '#65c59a'
       for (const [lx, ly, angle] of [
         [-30, -18, -0.55],
@@ -247,7 +285,7 @@ function UnderwaterGarden({ active }) {
       ]) {
         context.save()
         context.translate(lx, ly)
-        context.rotate(angle + Math.sin(wobble) * 0.18)
+        context.rotate(angle + Math.sin(wobble) * (0.18 + panic * 0.2))
         context.beginPath()
         context.ellipse(0, 0, 18, 8, 0, 0, Math.PI * 2)
         context.fill()
@@ -423,18 +461,61 @@ function UnderwaterGarden({ active }) {
         context.stroke()
       })
 
-      drawFish((width * 0.18 + time * width * 0.08) % (width + 140), height * 0.34, 1.05, '#ffcf5a', 1, time * 8)
-      drawFish(width - ((time * width * 0.1) % (width + 130)), height * 0.52, 0.82, '#ff8fac', -1, time * 7)
-      drawFish((width * 0.62 + time * width * 0.06) % (width + 110), height * 0.23, 0.64, '#a2fff0', 1, time * 9)
-      drawFish((width * 0.36 + time * width * 0.055) % (width + 120), height * 0.44, 0.58, '#c4a1ff', 1, time * 8.6)
-      drawFish(width - ((width * 0.12 + time * width * 0.07) % (width + 120)), height * 0.29, 0.7, '#ffef7a', -1, time * 7.8)
-      addedFish.forEach((fish) => {
-        const swim = (time * fish.speed + fish.seed) % 1
-        const x = fish.direction > 0 ? ((fish.x + swim) % 1) * width : ((fish.x - swim + 1) % 1) * width
-        const y = (fish.y + Math.sin(time * 3 + fish.seed * 8) * 0.025) * height
-        drawFish(x, y, fish.scale, fish.color, fish.direction, time * 8 + fish.seed)
+      const nativeFish = [
+        { lane: 0.31, speed: 0.062, seed: 0.18, direction: 1, amplitude: height * 0.075, scale: 1.05, color: '#ffcf5a' },
+        { lane: 0.5, speed: 0.084, seed: 0.62, direction: -1, amplitude: height * 0.09, scale: 0.82, color: '#ff8fac' },
+        { lane: 0.22, speed: 0.046, seed: 0.39, direction: 1, amplitude: height * 0.055, scale: 0.64, color: '#a2fff0' },
+        { lane: 0.42, speed: 0.052, seed: 0.78, direction: 1, amplitude: height * 0.11, scale: 0.58, color: '#c4a1ff' },
+        { lane: 0.28, speed: 0.058, seed: 0.91, direction: -1, amplitude: height * 0.07, scale: 0.7, color: '#ffef7a' },
+      ]
+
+      nativeFish.forEach((fish) => {
+        const swimmer = curveSwimmer(fish)
+        drawFish(
+          swimmer.x,
+          swimmer.y,
+          fish.scale,
+          fish.color,
+          swimmer.direction,
+          time * 8 + fish.seed,
+          swimmer.angle,
+          swimmer.panic,
+        )
       })
-      drawTurtle(width * (0.62 + Math.sin(time * 0.48) * 0.12), height * 0.58, 1.18, 1, time * 5)
+      addedFish.forEach((fish) => {
+        const swimmer = curveSwimmer({
+          lane: fish.y,
+          speed: fish.speed,
+          seed: fish.seed,
+          direction: fish.direction,
+          amplitude: height * (0.055 + fish.scale * 0.035),
+          drift: Math.sin(fish.seed * 14) * 0.025,
+          scale: fish.scale,
+        })
+        if (fish.type === 'turtle') {
+          drawTurtle(swimmer.x, swimmer.y, fish.scale * 1.35, swimmer.direction, time * 5 + fish.seed, swimmer.angle, swimmer.panic)
+        } else {
+          drawFish(
+            swimmer.x,
+            swimmer.y,
+            fish.scale,
+            fish.color,
+            swimmer.direction,
+            time * 8 + fish.seed,
+            swimmer.angle,
+            swimmer.panic,
+          )
+        }
+      })
+      const turtle = curveSwimmer({
+        lane: 0.58,
+        speed: 0.024,
+        seed: 0.44,
+        direction: 1,
+        amplitude: height * 0.085,
+        scale: 0.75,
+      })
+      drawTurtle(turtle.x, turtle.y, 1.18, turtle.direction, time * 5, turtle.angle * 0.45, turtle.panic)
 
       ripplesRef.current = ripples
         .map((ripple) => ({ ...ripple, radius: ripple.radius + 7 * window.devicePixelRatio, life: ripple.life - 0.012 }))
@@ -473,21 +554,22 @@ function UnderwaterGarden({ active }) {
 
     if (pondMode === 'fish') {
       const palette = ['#ffcf5a', '#ff8fac', '#a2fff0', '#c4a1ff', '#9cff9a', '#ffb06b']
-      setAddedFish((current) =>
-        [
-          ...current,
-          {
-            id: Date.now(),
-            x: x / canvasRef.current.width,
-            y: y / canvasRef.current.height,
-            color: palette[current.length % palette.length],
-            direction: current.length % 2 === 0 ? 1 : -1,
-            scale: 0.55 + (current.length % 4) * 0.14,
-            speed: 0.045 + (current.length % 5) * 0.012,
-            seed: (current.length + 1) * 0.137,
-          },
-        ].slice(-18),
-      )
+      setAddedFish((current) => {
+        const shouldAddTurtle = current.length % 5 === 3
+        const nextCreature = {
+          id: Date.now(),
+          type: shouldAddTurtle ? 'turtle' : 'fish',
+          x: x / canvasRef.current.width,
+          y: y / canvasRef.current.height,
+          color: palette[current.length % palette.length],
+          direction: current.length % 2 === 0 ? 1 : -1,
+          scale: shouldAddTurtle ? 0.78 : 0.55 + (current.length % 4) * 0.14,
+          speed: shouldAddTurtle ? 0.018 : 0.045 + (current.length % 5) * 0.012,
+          seed: (current.length + 1) * 0.137,
+        }
+
+        return [...current, nextCreature].slice(-18)
+      })
     }
   }
 
