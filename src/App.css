@@ -253,6 +253,46 @@ h2 {
   touch-action: none;
 }
 
+.pond-tools {
+  position: absolute;
+  z-index: 5;
+  right: 24px;
+  top: 24px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid rgba(216, 255, 246, 0.22);
+  border-radius: 999px;
+  background: rgba(5, 31, 37, 0.62);
+  backdrop-filter: blur(14px);
+}
+
+.pond-tools button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 0 13px;
+  border-radius: 999px;
+  color: #d9fff7;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.pond-tools button.active {
+  color: #07262b;
+  background: #a2fff0;
+}
+
+.pond-tools span {
+  min-width: 28px;
+  color: #a2fff0;
+  text-align: center;
+  font-weight: 900;
+}
+
 .reef .caption {
   width: min(680px, calc(100% - 112px));
   text-shadow: 0 3px 18px rgba(2, 19, 24, 0.55);
@@ -460,5 +500,18 @@ h2 {
   .target {
     width: 60px;
     height: 60px;
+  }
+
+  .pond-tools {
+    left: 50%;
+    right: auto;
+    top: 84px;
+    transform: translateX(-50%);
+  }
+
+  .pond-tools button {
+    min-height: 34px;
+    padding: 0 10px;
+    font-size: 12px;
   }
 }

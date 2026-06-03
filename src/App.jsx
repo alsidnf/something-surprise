@@ -3,10 +3,13 @@ import { Float, MeshTransmissionMaterial, OrbitControls, Stars } from '@react-th
 import {
   ArrowDown,
   ArrowUp,
+  CircleDot,
+  Fish,
   Gamepad2,
   MousePointer2,
   Pause,
   Play,
+  Plus,
   Rotate3d,
   Sparkles,
   WandSparkles,
@@ -153,6 +156,8 @@ function CursorField({ pointer, active }) {
 function UnderwaterGarden({ active }) {
   const canvasRef = useRef()
   const ripplesRef = useRef([])
+  const [pondMode, setPondMode] = useState('ripple')
+  const [addedFish, setAddedFish] = useState([])
   const flora = useMemo(
     () =>
       Array.from({ length: 34 }, (_, index) => ({
@@ -162,6 +167,25 @@ function UnderwaterGarden({ active }) {
         phase: index * 0.72,
         color: index % 3 === 0 ? '#57d68d' : index % 3 === 1 ? '#78e6b8' : '#3fb77a',
       })),
+    [],
+  )
+  const shells = useMemo(
+    () =>
+      Array.from({ length: 11 }, (_, index) => ({
+        x: 0.1 + index * 0.083,
+        y: 0.86 + ((Math.cos(index * 3.7) + 1) / 2) * 0.09,
+        size: 0.72 + ((Math.sin(index * 6.1) + 1) / 2) * 0.62,
+        angle: -0.35 + ((Math.sin(index * 2.3) + 1) / 2) * 0.7,
+        tone: index % 5,
+      })),
+    [],
+  )
+  const starfish = useMemo(
+    () => [
+      { x: 0.19, y: 0.9, size: 0.82, angle: 0.25 },
+      { x: 0.52, y: 0.88, size: 0.62, angle: -0.35 },
+      { x: 0.83, y: 0.91, size: 0.72, angle: 0.55 },
+    ],
     [],
   )
   const stones = useMemo(
@@ -250,6 +274,56 @@ function UnderwaterGarden({ active }) {
       context.restore()
     }
 
+    const drawShell = (x, y, scale, angle, color) => {
+      context.save()
+      context.translate(x, y)
+      context.rotate(angle)
+      context.scale(scale, scale)
+      context.fillStyle = color
+      context.beginPath()
+      context.moveTo(-22, 8)
+      context.quadraticCurveTo(-16, -22, 0, -27)
+      context.quadraticCurveTo(16, -22, 22, 8)
+      context.closePath()
+      context.fill()
+      context.strokeStyle = 'rgba(255, 250, 225, 0.55)'
+      context.lineWidth = 2.2
+      for (let i = -2; i <= 2; i += 1) {
+        context.beginPath()
+        context.moveTo(0, -24)
+        context.quadraticCurveTo(i * 8, -8, i * 10, 8)
+        context.stroke()
+      }
+      context.restore()
+    }
+
+    const drawStarfish = (x, y, scale, angle) => {
+      context.save()
+      context.translate(x, y)
+      context.rotate(angle)
+      context.scale(scale, scale)
+      context.fillStyle = '#ff9d78'
+      context.beginPath()
+      for (let i = 0; i < 10; i += 1) {
+        const radius = i % 2 === 0 ? 24 : 10
+        const point = -Math.PI / 2 + (i / 10) * Math.PI * 2
+        const px = Math.cos(point) * radius
+        const py = Math.sin(point) * radius
+        if (i === 0) context.moveTo(px, py)
+        else context.lineTo(px, py)
+      }
+      context.closePath()
+      context.fill()
+      context.fillStyle = 'rgba(255, 239, 198, 0.75)'
+      for (let i = 0; i < 5; i += 1) {
+        const point = -Math.PI / 2 + (i / 5) * Math.PI * 2
+        context.beginPath()
+        context.arc(Math.cos(point) * 9, Math.sin(point) * 9, 2.4, 0, Math.PI * 2)
+        context.fill()
+      }
+      context.restore()
+    }
+
     const draw = () => {
       const width = canvas.width
       const height = canvas.height
@@ -309,6 +383,20 @@ function UnderwaterGarden({ active }) {
         context.fill()
       })
 
+      shells.forEach((shell) => {
+        drawShell(
+          shell.x * width,
+          shell.y * height,
+          shell.size * window.devicePixelRatio,
+          shell.angle,
+          ['#ffd6a5', '#f8b4c4', '#f5f0d0', '#c7e8dd', '#e8c7ff'][shell.tone],
+        )
+      })
+
+      starfish.forEach((star) => {
+        drawStarfish(star.x * width, star.y * height, star.size * window.devicePixelRatio, star.angle)
+      })
+
       flora.forEach((plant) => {
         const baseX = plant.x * width
         const baseY = height * 0.9
@@ -338,6 +426,14 @@ function UnderwaterGarden({ active }) {
       drawFish((width * 0.18 + time * width * 0.08) % (width + 140), height * 0.34, 1.05, '#ffcf5a', 1, time * 8)
       drawFish(width - ((time * width * 0.1) % (width + 130)), height * 0.52, 0.82, '#ff8fac', -1, time * 7)
       drawFish((width * 0.62 + time * width * 0.06) % (width + 110), height * 0.23, 0.64, '#a2fff0', 1, time * 9)
+      drawFish((width * 0.36 + time * width * 0.055) % (width + 120), height * 0.44, 0.58, '#c4a1ff', 1, time * 8.6)
+      drawFish(width - ((width * 0.12 + time * width * 0.07) % (width + 120)), height * 0.29, 0.7, '#ffef7a', -1, time * 7.8)
+      addedFish.forEach((fish) => {
+        const swim = (time * fish.speed + fish.seed) % 1
+        const x = fish.direction > 0 ? ((fish.x + swim) % 1) * width : ((fish.x - swim + 1) % 1) * width
+        const y = (fish.y + Math.sin(time * 3 + fish.seed * 8) * 0.025) * height
+        drawFish(x, y, fish.scale, fish.color, fish.direction, time * 8 + fish.seed)
+      })
       drawTurtle(width * (0.62 + Math.sin(time * 0.48) * 0.12), height * 0.58, 1.18, 1, time * 5)
 
       ripplesRef.current = ripples
@@ -362,25 +458,70 @@ function UnderwaterGarden({ active }) {
       cancelAnimationFrame(rafId)
       window.removeEventListener('resize', resize)
     }
-  }, [active, flora, stones])
+  }, [active, addedFish, flora, shells, starfish, stones])
 
   const addRipple = (event) => {
     const rect = event.currentTarget.getBoundingClientRect()
+    const x = (event.clientX - rect.left) * window.devicePixelRatio
+    const y = (event.clientY - rect.top) * window.devicePixelRatio
     ripplesRef.current.push({
-      x: (event.clientX - rect.left) * window.devicePixelRatio,
-      y: (event.clientY - rect.top) * window.devicePixelRatio,
+      x,
+      y,
       radius: 8,
       life: 1,
     })
+
+    if (pondMode === 'fish') {
+      const palette = ['#ffcf5a', '#ff8fac', '#a2fff0', '#c4a1ff', '#9cff9a', '#ffb06b']
+      setAddedFish((current) =>
+        [
+          ...current,
+          {
+            id: Date.now(),
+            x: x / canvasRef.current.width,
+            y: y / canvasRef.current.height,
+            color: palette[current.length % palette.length],
+            direction: current.length % 2 === 0 ? 1 : -1,
+            scale: 0.55 + (current.length % 4) * 0.14,
+            speed: 0.045 + (current.length % 5) * 0.012,
+            seed: (current.length + 1) * 0.137,
+          },
+        ].slice(-18),
+      )
+    }
   }
 
   return (
-    <canvas
-      ref={canvasRef}
-      className="pond-canvas"
-      onPointerDown={addRipple}
-      aria-label="Interactive underwater pond with plants, stones, fish, turtle, and click ripples"
-    />
+    <>
+      <canvas
+        ref={canvasRef}
+        className="pond-canvas"
+        onPointerDown={addRipple}
+        aria-label="Interactive underwater pond with plants, stones, shells, fish, turtle, and click ripples"
+      />
+      <div className="pond-tools" aria-label="Pond interaction mode">
+        <button
+          type="button"
+          className={pondMode === 'ripple' ? 'active' : ''}
+          onClick={() => setPondMode('ripple')}
+          title="Ripple mode"
+        >
+          <CircleDot size={17} />
+          Ripple
+        </button>
+        <button
+          type="button"
+          className={pondMode === 'fish' ? 'active' : ''}
+          onClick={() => setPondMode('fish')}
+          title="Add fish mode"
+        >
+          <Plus size={17} />
+          <Fish size={17} />
+          Add fish
+        </button>
+        {addedFish.length > 0 && <span>{addedFish.length}</span>}
+      </div>
+    </>
   )
 }
 
