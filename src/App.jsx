@@ -156,6 +156,7 @@ function CursorField({ pointer, active }) {
 function UnderwaterGarden({ active }) {
   const canvasRef = useRef()
   const ripplesRef = useRef([])
+  const addedFishRef = useRef([])
   const [pondMode, setPondMode] = useState('ripple')
   const [addedFish, setAddedFish] = useState([])
   const flora = useMemo(
@@ -482,7 +483,7 @@ function UnderwaterGarden({ active }) {
           swimmer.panic,
         )
       })
-      addedFish.forEach((fish) => {
+      addedFishRef.current.forEach((fish) => {
         const swimmer = curveSwimmer({
           lane: fish.y,
           speed: fish.speed,
@@ -539,7 +540,7 @@ function UnderwaterGarden({ active }) {
       cancelAnimationFrame(rafId)
       window.removeEventListener('resize', resize)
     }
-  }, [active, addedFish, flora, shells, starfish, stones])
+  }, [active, flora, shells, starfish, stones])
 
   const addRipple = (event) => {
     const rect = event.currentTarget.getBoundingClientRect()
@@ -568,7 +569,9 @@ function UnderwaterGarden({ active }) {
           seed: (current.length + 1) * 0.137,
         }
 
-        return [...current, nextCreature].slice(-18)
+        const next = [...current, nextCreature].slice(-18)
+        addedFishRef.current = next
+        return next
       })
     }
   }
