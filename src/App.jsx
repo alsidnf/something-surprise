@@ -230,9 +230,11 @@ function UnderwaterGarden({ active }) {
         { x: 0, y: 0, panic: 0 },
       )
 
-    const curveSwimmer = ({ lane, speed, seed, direction, amplitude, drift = 0, scale = 1 }) => {
-      const progress = (time * speed + seed) % 1
-      const x = direction > 0 ? progress * (canvas.width + 160) - 80 : canvas.width + 80 - progress * (canvas.width + 160)
+    const curveSwimmer = ({ lane, speed, seed, direction, amplitude, drift = 0, scale = 1, home = 0.5, span = 0.39 }) => {
+      const progress = time * speed + seed
+      const orbit = Math.sin(progress * Math.PI * 2)
+      const velocity = Math.cos(progress * Math.PI * 2) * direction
+      const x = canvas.width * (home + orbit * span * direction)
       const curve =
         Math.sin(progress * Math.PI * 2 + seed * 8) * amplitude +
         Math.sin(time * 1.7 + seed * 17) * amplitude * 0.38 +
@@ -243,7 +245,7 @@ function UnderwaterGarden({ active }) {
       return {
         x: x + push.x,
         y: y + push.y,
-        direction,
+        direction: velocity >= 0 ? 1 : -1,
         angle: Math.max(-0.42, Math.min(0.42, curve / (amplitude * 4 + 1) + push.y / 260)),
         panic: Math.min(1.2, push.panic),
       }
@@ -463,11 +465,11 @@ function UnderwaterGarden({ active }) {
       })
 
       const nativeFish = [
-        { lane: 0.31, speed: 0.062, seed: 0.18, direction: 1, amplitude: height * 0.075, scale: 1.05, color: '#ffcf5a' },
-        { lane: 0.5, speed: 0.084, seed: 0.62, direction: -1, amplitude: height * 0.09, scale: 0.82, color: '#ff8fac' },
-        { lane: 0.22, speed: 0.046, seed: 0.39, direction: 1, amplitude: height * 0.055, scale: 0.64, color: '#a2fff0' },
-        { lane: 0.42, speed: 0.052, seed: 0.78, direction: 1, amplitude: height * 0.11, scale: 0.58, color: '#c4a1ff' },
-        { lane: 0.28, speed: 0.058, seed: 0.91, direction: -1, amplitude: height * 0.07, scale: 0.7, color: '#ffef7a' },
+        { lane: 0.31, speed: 0.062, seed: 0.18, direction: 1, amplitude: height * 0.075, scale: 1.05, color: '#ffcf5a', home: 0.42, span: 0.34 },
+        { lane: 0.5, speed: 0.084, seed: 0.62, direction: -1, amplitude: height * 0.09, scale: 0.82, color: '#ff8fac', home: 0.6, span: 0.36 },
+        { lane: 0.22, speed: 0.046, seed: 0.39, direction: 1, amplitude: height * 0.055, scale: 0.64, color: '#a2fff0', home: 0.66, span: 0.28 },
+        { lane: 0.42, speed: 0.052, seed: 0.78, direction: 1, amplitude: height * 0.11, scale: 0.58, color: '#c4a1ff', home: 0.4, span: 0.26 },
+        { lane: 0.28, speed: 0.058, seed: 0.91, direction: -1, amplitude: height * 0.07, scale: 0.7, color: '#ffef7a', home: 0.72, span: 0.24 },
       ]
 
       nativeFish.forEach((fish) => {
@@ -492,6 +494,8 @@ function UnderwaterGarden({ active }) {
           amplitude: height * (0.055 + fish.scale * 0.035),
           drift: Math.sin(fish.seed * 14) * 0.025,
           scale: fish.scale,
+          home: fish.x,
+          span: 0.18 + (fish.seed % 0.24),
         })
         if (fish.type === 'turtle') {
           drawTurtle(swimmer.x, swimmer.y, fish.scale * 1.35, swimmer.direction, time * 5 + fish.seed, swimmer.angle, swimmer.panic)
@@ -515,6 +519,8 @@ function UnderwaterGarden({ active }) {
         direction: 1,
         amplitude: height * 0.085,
         scale: 0.75,
+        home: 0.62,
+        span: 0.22,
       })
       drawTurtle(turtle.x, turtle.y, 1.18, turtle.direction, time * 5, turtle.angle * 0.45, turtle.panic)
 
@@ -560,7 +566,7 @@ function UnderwaterGarden({ active }) {
         const nextCreature = {
           id: Date.now(),
           type: shouldAddTurtle ? 'turtle' : 'fish',
-          x: x / canvasRef.current.width,
+          x: Math.min(0.82, Math.max(0.18, x / canvasRef.current.width)),
           y: y / canvasRef.current.height,
           color: palette[current.length % palette.length],
           direction: current.length % 2 === 0 ? 1 : -1,
