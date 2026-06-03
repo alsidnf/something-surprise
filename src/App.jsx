@@ -10,6 +10,7 @@ import {
   Rotate3d,
   Sparkles,
   WandSparkles,
+  Waves,
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
@@ -18,6 +19,7 @@ const slides = [
   { id: 'intro', title: 'Impossible Deck', icon: Sparkles },
   { id: 'artifact', title: '3D Artifact', icon: Rotate3d },
   { id: 'field', title: 'Cursor Field', icon: MousePointer2 },
+  { id: 'reef', title: 'Living Pond', icon: Waves },
   { id: 'game', title: 'Mini Game', icon: Gamepad2 },
   { id: 'ending', title: 'Live Finale', icon: WandSparkles },
 ]
@@ -146,6 +148,240 @@ function CursorField({ pointer, active }) {
   }, [active, pointer.x, pointer.y])
 
   return <canvas ref={canvasRef} className="field-canvas" aria-label="Mouse reactive generative particle field" />
+}
+
+function UnderwaterGarden({ active }) {
+  const canvasRef = useRef()
+  const ripplesRef = useRef([])
+  const flora = useMemo(
+    () =>
+      Array.from({ length: 34 }, (_, index) => ({
+        x: 0.04 + index * 0.029,
+        height: 0.16 + ((Math.sin(index * 7.17) + 1) / 2) * 0.22,
+        width: 8 + ((Math.cos(index * 5.21) + 1) / 2) * 10,
+        phase: index * 0.72,
+        color: index % 3 === 0 ? '#57d68d' : index % 3 === 1 ? '#78e6b8' : '#3fb77a',
+      })),
+    [],
+  )
+  const stones = useMemo(
+    () =>
+      Array.from({ length: 13 }, (_, index) => ({
+        x: 0.06 + index * 0.078,
+        y: 0.91 + ((Math.sin(index * 4.8) + 1) / 2) * 0.045,
+        r: 18 + ((Math.cos(index * 2.9) + 1) / 2) * 28,
+        tone: index % 4,
+      })),
+    [],
+  )
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    const context = canvas.getContext('2d')
+    let rafId
+    let time = 0
+
+    const resize = () => {
+      canvas.width = Math.floor(canvas.clientWidth * window.devicePixelRatio)
+      canvas.height = Math.floor(canvas.clientHeight * window.devicePixelRatio)
+    }
+
+    const drawFish = (x, y, scale, color, direction, wobble) => {
+      context.save()
+      context.translate(x, y)
+      context.scale(direction * scale, scale)
+      context.rotate(Math.sin(wobble) * 0.08)
+      context.fillStyle = color
+      context.beginPath()
+      context.ellipse(0, 0, 34, 16, 0, 0, Math.PI * 2)
+      context.fill()
+      context.beginPath()
+      context.moveTo(-28, 0)
+      context.lineTo(-52, -17)
+      context.lineTo(-48, 0)
+      context.lineTo(-52, 17)
+      context.closePath()
+      context.fill()
+      context.fillStyle = '#07131c'
+      context.beginPath()
+      context.arc(20, -5, 3.4, 0, Math.PI * 2)
+      context.fill()
+      context.restore()
+    }
+
+    const drawTurtle = (x, y, scale, direction, wobble) => {
+      context.save()
+      context.translate(x, y)
+      context.scale(direction * scale, scale)
+      context.rotate(Math.sin(wobble) * 0.05)
+      context.fillStyle = '#65c59a'
+      for (const [lx, ly, angle] of [
+        [-30, -18, -0.55],
+        [-28, 18, 0.55],
+        [26, -18, 0.55],
+        [26, 18, -0.55],
+      ]) {
+        context.save()
+        context.translate(lx, ly)
+        context.rotate(angle + Math.sin(wobble) * 0.18)
+        context.beginPath()
+        context.ellipse(0, 0, 18, 8, 0, 0, Math.PI * 2)
+        context.fill()
+        context.restore()
+      }
+      context.fillStyle = '#8ce0b4'
+      context.beginPath()
+      context.arc(48, 0, 13, 0, Math.PI * 2)
+      context.fill()
+      context.fillStyle = '#4fa77f'
+      context.beginPath()
+      context.ellipse(0, 0, 46, 30, 0, 0, Math.PI * 2)
+      context.fill()
+      context.strokeStyle = 'rgba(209, 255, 226, 0.42)'
+      context.lineWidth = 3
+      context.beginPath()
+      context.moveTo(-32, -4)
+      context.quadraticCurveTo(0, -25, 32, -4)
+      context.moveTo(-34, 7)
+      context.quadraticCurveTo(0, 26, 34, 7)
+      context.moveTo(0, -29)
+      context.lineTo(0, 29)
+      context.stroke()
+      context.restore()
+    }
+
+    const draw = () => {
+      const width = canvas.width
+      const height = canvas.height
+      time += active ? 0.014 : 0.004
+      const ripples = ripplesRef.current
+
+      const gradient = context.createLinearGradient(0, 0, 0, height)
+      gradient.addColorStop(0, '#0b6d8f')
+      gradient.addColorStop(0.52, '#0d5369')
+      gradient.addColorStop(1, '#092c2f')
+      context.fillStyle = gradient
+      context.fillRect(0, 0, width, height)
+
+      context.globalAlpha = 0.18
+      context.strokeStyle = '#d8fff6'
+      context.lineWidth = 2 * window.devicePixelRatio
+      for (let i = 0; i < 10; i += 1) {
+        const y = height * (0.08 + i * 0.075) + Math.sin(time * 3 + i) * 14
+        context.beginPath()
+        for (let x = -30; x < width + 30; x += 28) {
+          const wave = Math.sin(x * 0.012 + time * 5 + i) * 10
+          if (x < 0) context.moveTo(x, y + wave)
+          else context.lineTo(x, y + wave)
+        }
+        context.stroke()
+      }
+      context.globalAlpha = 1
+
+      for (let i = 0; i < 54; i += 1) {
+        const x = ((i * 73 + time * 120) % (width + 120)) - 60
+        const y = height * (0.12 + ((Math.sin(i * 2.4) + 1) / 2) * 0.62)
+        context.fillStyle = `rgba(214, 255, 245, ${0.16 + ((i % 5) / 20)})`
+        context.beginPath()
+        context.arc(x, y + Math.sin(time * 4 + i) * 9, 2 + (i % 4), 0, Math.PI * 2)
+        context.fill()
+      }
+
+      const sand = context.createLinearGradient(0, height * 0.82, 0, height)
+      sand.addColorStop(0, '#b9a36e')
+      sand.addColorStop(1, '#594a32')
+      context.fillStyle = sand
+      context.beginPath()
+      context.moveTo(0, height)
+      for (let x = 0; x <= width; x += 40) {
+        context.lineTo(x, height * 0.87 + Math.sin(x * 0.012 + time * 1.3) * 18)
+      }
+      context.lineTo(width, height)
+      context.closePath()
+      context.fill()
+
+      stones.forEach((stone) => {
+        const x = stone.x * width
+        const y = stone.y * height
+        context.fillStyle = ['#4c5c58', '#6d7166', '#394a47', '#77705d'][stone.tone]
+        context.beginPath()
+        context.ellipse(x, y, stone.r, stone.r * 0.48, Math.sin(stone.x * 8) * 0.25, 0, Math.PI * 2)
+        context.fill()
+      })
+
+      flora.forEach((plant) => {
+        const baseX = plant.x * width
+        const baseY = height * 0.9
+        const plantHeight = plant.height * height
+        const rippleBoost = ripples.reduce((sum, ripple) => {
+          const distance = Math.hypot(baseX - ripple.x, baseY - ripple.y)
+          return sum + Math.max(0, 1 - Math.abs(distance - ripple.radius) / 160) * ripple.life
+        }, 0)
+        const sway = Math.sin(time * 3.6 + plant.phase) * plant.width + rippleBoost * 34
+
+        context.strokeStyle = plant.color
+        context.lineWidth = 5 * window.devicePixelRatio
+        context.lineCap = 'round'
+        context.beginPath()
+        context.moveTo(baseX, baseY)
+        context.bezierCurveTo(
+          baseX + sway * 0.15,
+          baseY - plantHeight * 0.28,
+          baseX + sway,
+          baseY - plantHeight * 0.62,
+          baseX + sway * 0.36,
+          baseY - plantHeight,
+        )
+        context.stroke()
+      })
+
+      drawFish((width * 0.18 + time * width * 0.08) % (width + 140), height * 0.34, 1.05, '#ffcf5a', 1, time * 8)
+      drawFish(width - ((time * width * 0.1) % (width + 130)), height * 0.52, 0.82, '#ff8fac', -1, time * 7)
+      drawFish((width * 0.62 + time * width * 0.06) % (width + 110), height * 0.23, 0.64, '#a2fff0', 1, time * 9)
+      drawTurtle(width * (0.62 + Math.sin(time * 0.48) * 0.12), height * 0.58, 1.18, 1, time * 5)
+
+      ripplesRef.current = ripples
+        .map((ripple) => ({ ...ripple, radius: ripple.radius + 7 * window.devicePixelRatio, life: ripple.life - 0.012 }))
+        .filter((ripple) => ripple.life > 0)
+
+      ripplesRef.current.forEach((ripple) => {
+        context.strokeStyle = `rgba(218, 255, 248, ${ripple.life * 0.7})`
+        context.lineWidth = 3 * window.devicePixelRatio
+        context.beginPath()
+        context.arc(ripple.x, ripple.y, ripple.radius, 0, Math.PI * 2)
+        context.stroke()
+      })
+
+      rafId = requestAnimationFrame(draw)
+    }
+
+    resize()
+    draw()
+    window.addEventListener('resize', resize)
+    return () => {
+      cancelAnimationFrame(rafId)
+      window.removeEventListener('resize', resize)
+    }
+  }, [active, flora, stones])
+
+  const addRipple = (event) => {
+    const rect = event.currentTarget.getBoundingClientRect()
+    ripplesRef.current.push({
+      x: (event.clientX - rect.left) * window.devicePixelRatio,
+      y: (event.clientY - rect.top) * window.devicePixelRatio,
+      radius: 8,
+      life: 1,
+    })
+  }
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className="pond-canvas"
+      onPointerDown={addRipple}
+      aria-label="Interactive underwater pond with plants, stones, fish, turtle, and click ripples"
+    />
+  )
 }
 
 function SignalGame() {
@@ -309,6 +545,15 @@ function App() {
             <p className="kicker">cursor becomes gravity</p>
             <h2>마우스가 중력이 되는 입자장</h2>
             <p>포인터 위치가 수백 개의 점을 당기고 밀어내며 색과 크기를 실시간으로 바꿉니다.</p>
+          </div>
+        </section>
+
+        <section className="slide reef">
+          <UnderwaterGarden active={running} />
+          <div className="caption">
+            <p className="kicker">click the water, watch it answer</p>
+            <h2>클릭하면 파문이 번지는 작은 연못</h2>
+            <p>물풀은 흐름에 맞춰 흔들리고, 물고기와 거북이는 조용히 지나갑니다. 화면을 누르면 그 자리에서 물결이 퍼집니다.</p>
           </div>
         </section>
 

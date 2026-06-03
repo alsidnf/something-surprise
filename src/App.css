@@ -199,6 +199,7 @@ h2 {
 
 .scene,
 .field-canvas,
+.pond-canvas,
 .game-stage,
 .bars {
   width: 100%;
@@ -234,10 +235,27 @@ h2 {
 }
 
 .field .caption,
+.reef .caption,
 .game .caption {
   align-self: end;
   justify-self: start;
   padding: 0 0 86px 92px;
+}
+
+.reef {
+  background: #0d5369;
+}
+
+.pond-canvas {
+  position: absolute;
+  inset: 0;
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.reef .caption {
+  width: min(680px, calc(100% - 112px));
+  text-shadow: 0 3px 18px rgba(2, 19, 24, 0.55);
 }
 
 .game {
@@ -426,6 +444,7 @@ h2 {
 
   .caption,
   .field .caption,
+  .reef .caption,
   .game .caption {
     justify-self: center;
     align-self: end;
